@@ -4,7 +4,7 @@ const axios = require('axios');
 const app = express();
 const PORT = 3000;
 
-const accessToken = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJNYXBDbGFpbXMiOnsiZXhwIjoxNzE4MjYxNTE5LCJpYXQiOjE3MTgyNjEyMTksImlzcyI6IkFmZm9yZG1lZCIsImp0aSI6IjkxYTk5ZTYyLTU3ODYtNDU5YS1iZWJjLWY4NDdmNTc4YjFiNSIsInN1YiI6IjIxMDAwMzE4OTBjc2VoQGdtYWlsLmNvbSJ9LCJjb21wYW55TmFtZSI6IkFmZm9yZG1lZCIsImNsaWVudElEIjoiOTFhOTllNjItNTc4Ni00NTlhLWJlYmMtZjg0N2Y1NzhiMWI1IiwiY2xpZW50U2VjcmV0IjoicmF3T1RnYkNjRE55UExmeiIsIm93bmVyTmFtZSI6IlJldmFudGgiLCJvd25lckVtYWlsIjoiMjEwMDAzMTg5MGNzZWhAZ21haWwuY29tIiwicm9sbE5vIjoiMjEwMDAzMTg5MCJ9.9P140-IslW9xO2crQ06TiOFW1M3g3OXn9vNj88F1i20";
+let accessToken = ""; 
 
 const windowSize = 10;
 let windowNumbers = [];
@@ -23,6 +23,46 @@ function calculateAverage(numbers) {
 
 app.use(express.json());
 
+// Function to fetch access token from third-party server
+async function fetchAccessToken() {
+    const apiCredentials = {
+            "companyName": "Affordmed",
+            "clientID": "91a99e62-5786-459a-bebc-f847f578b1b5",
+            "clientSecret": "rawOTgbCcDNyPLfz",
+            "ownerName": "Revanth",
+            "ownerEmail": "2100031890cseh@gmail.com",
+            "rollNo": "2100031890"
+    };
+
+    try {
+        const response = await axios.post('http://20.244.56.144/test/auth', apiCredentials);
+        return response.data.access_token;
+    } catch (error) {
+        console.error("Error fetching access token:", error.message);
+        throw new Error("Failed to fetch access token");
+    }
+}
+
+// Function to initialize server and fetch access token
+async function initializeServer() {
+    try {
+        // Fetch access token
+        accessToken = await fetchAccessToken();
+        console.log("Access token fetched successfully:");
+    } catch (error) {
+        console.error("Error initializing server:", error.message);
+        process.exit(1); // Exit the process if unable to fetch access token
+    }
+
+    // Start server
+    app.listen(PORT, () => {
+        console.log(`Server is running on http://localhost:${PORT}`);
+    });
+}
+
+// Call the function to initialize server and fetch access token
+initializeServer();
+
 app.get('/numbers/:numberid', async (req, res) => {
     const shortIdentifier = req.params.numberid;
     const fullIdentifier = identifierMap[shortIdentifier];
@@ -34,7 +74,7 @@ app.get('/numbers/:numberid', async (req, res) => {
     try {
         const response = await axios.get(`http://20.244.56.144/test/${fullIdentifier}`, {
             headers: {
-                Authorization: accessToken
+                Authorization: `Bearer ${accessToken}`
             }
         });
 
@@ -61,9 +101,4 @@ app.get('/numbers/:numberid', async (req, res) => {
         console.error("Error:", error.message);
         res.status(500).json({ error: "Internal server error" });
     }
-});
-
-// Start server
-app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
 });
